@@ -74,7 +74,7 @@ start_services() {
     print_status "Starting all services..."
     docker compose up -d
     print_success "All services started!"
-    print_status "Backend: http://localhost:3001"
+    print_status "Backend API: http://localhost:3000/api/ (via frontend proxy)"
     print_status "Frontend: http://localhost:3000"
 }
 

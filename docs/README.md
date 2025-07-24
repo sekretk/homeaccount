@@ -23,6 +23,7 @@ ADRs document important architectural decisions made during the project developm
 
 ### 🚀 Getting Started
 - **[Main README](../README.md)** - Project overview and setup instructions
+- **[GitHub Setup Guide](./github-setup.md)** - Branch protection and PR validation setup
 - **[Shared Types](../shared/dto.ts)** - Current shared interfaces and DTOs
 
 ### 🧪 Development
@@ -31,7 +32,7 @@ ADRs document important architectural decisions made during the project developm
 - **Frontend Dev**: Run `cd frontend && npm run dev`
 
 ### 🔗 API Documentation
-- **Backend Server**: http://localhost:3001
+- **Backend API**: http://localhost:3000/api/ (proxied through frontend)
 - **Frontend App**: http://localhost:3000
 - **API Endpoint**: `GET /current-data`
 

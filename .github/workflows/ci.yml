@@ -1,0 +1,306 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # Job 1: Validate Shared Types
+  validate-shared:
+    runs-on: ubuntu-latest
+    name: Validate Shared Types
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
+
+    - name: Validate shared TypeScript files
+      run: |
+        echo "✅ Validating shared TypeScript compilation..."
+        npx tsc --noEmit --target ES2020 --module commonjs shared/dto.ts
+        echo "✅ Shared types are valid!"
+
+  # Job 2: Backend Build & Test
+  backend:
+    runs-on: ubuntu-latest
+    needs: validate-shared
+    name: Backend (NestJS)
+    
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Lint backend code
+      run: |
+        cd backend
+        echo "⚠️ Linting skipped (no linter configured)"
+        # npm run lint
+
+    - name: Build backend
+      run: |
+        cd backend
+        npm run build
+
+    - name: Run backend unit tests
+      run: |
+        cd backend
+        npm run test
+
+    - name: Run backend E2E tests
+      run: |
+        cd backend
+        npm run test:e2e
+
+    - name: Upload backend test coverage
+      uses: actions/upload-artifact@v4
+      if: matrix.node-version == '18'
+      with:
+        name: backend-coverage
+        path: backend/coverage/
+        retention-days: 7
+
+  # Job 3: Frontend Build & Test
+  frontend:
+    runs-on: ubuntu-latest
+    needs: validate-shared
+    name: Frontend (React)
+    
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Lint frontend code
+      run: |
+        cd frontend
+        echo "⚠️ Linting skipped (no linter configured)"
+        # npm run lint
+
+    - name: Type check frontend
+      run: |
+        cd frontend
+        npx tsc --noEmit
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+
+    - name: Test frontend build output
+      run: |
+        cd frontend
+        ls -la dist/
+        echo "✅ Frontend build artifacts created"
+
+    - name: Upload frontend build artifacts
+      uses: actions/upload-artifact@v4
+      if: matrix.node-version == '18'
+      with:
+        name: frontend-dist
+        path: frontend/dist/
+        retention-days: 7
+
+  # Job 4: Docker Build & Test
+  docker:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    name: Docker Build & Test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build backend Docker image
+      run: |
+        docker build -t homeaccount-backend:test -f backend/Dockerfile .
+
+    - name: Build frontend Docker image
+      run: |
+        docker build -t homeaccount-frontend:test -f frontend/Dockerfile .
+
+    - name: Test Docker images
+      run: |
+        echo "✅ Testing Docker images..."
+        
+        # Start backend container
+        docker run -d --name test-backend \
+          --network test-network \
+          -e NODE_ENV=production \
+          homeaccount-backend:test || docker network create test-network && \
+        docker run -d --name test-backend \
+          --network test-network \
+          -e NODE_ENV=production \
+          homeaccount-backend:test
+
+        # Wait for backend to be ready
+        sleep 10
+
+        # Test backend health
+        docker run --rm --network test-network \
+          curlimages/curl:latest \
+          curl -f http://test-backend:3001/current-data
+
+        # Start frontend container
+        docker run -d --name test-frontend \
+          --network test-network \
+          -p 3000:3000 \
+          homeaccount-frontend:test
+
+        # Wait for frontend to be ready
+        sleep 10
+
+        # Test frontend health
+        curl -f http://localhost:3000/
+        
+        echo "✅ Docker containers are working!"
+
+    - name: Clean up Docker test containers
+      if: always()
+      run: |
+        docker stop test-backend test-frontend || true
+        docker rm test-backend test-frontend || true
+        docker network rm test-network || true
+
+    - name: Export Docker images
+      run: |
+        docker save homeaccount-backend:test | gzip > backend-image.tar.gz
+        docker save homeaccount-frontend:test | gzip > frontend-image.tar.gz
+
+    - name: Upload Docker images
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-images
+        path: |
+          backend-image.tar.gz
+          frontend-image.tar.gz
+        retention-days: 7
+
+  # Job 5: Integration Test
+  integration:
+    runs-on: ubuntu-latest
+    needs: docker
+    name: Integration Tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download Docker images
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-images
+
+    - name: Load Docker images
+      run: |
+        docker load < backend-image.tar.gz
+        docker load < frontend-image.tar.gz
+
+    - name: Run full stack integration test
+      run: |
+        echo "🚀 Starting full stack integration test..."
+        
+        # Use docker-compose to start services
+        docker compose up -d
+        
+        # Wait for services to be ready
+        echo "⏳ Waiting for services to be ready..."
+        sleep 30
+        
+        # Test backend health through frontend proxy
+        echo "🔍 Testing API endpoint through frontend proxy..."
+        curl -f http://localhost:3000/api/current-data
+        
+        # Test frontend
+        echo "🔍 Testing frontend..."
+        curl -f http://localhost:3000/
+        
+        echo "✅ Integration tests passed!"
+
+    - name: Show service logs on failure
+      if: failure()
+      run: |
+        echo "🔍 Backend logs:"
+        docker compose logs backend
+        echo "🔍 Frontend logs:"
+        docker compose logs frontend
+
+    - name: Clean up integration test
+      if: always()
+      run: |
+        docker compose down -v
+
+  # Job 6: Build Summary
+  summary:
+    runs-on: ubuntu-latest
+    needs: [validate-shared, backend, frontend, docker, integration]
+    name: Build Summary
+    if: always()
+    
+    steps:
+    - name: Build Summary
+      run: |
+        echo "## 🏗️ Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|---------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Shared Types | ${{ needs.validate-shared.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend | ${{ needs.backend.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend | ${{ needs.frontend.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Docker | ${{ needs.docker.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Integration | ${{ needs.integration.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "${{ needs.validate-shared.result }}" == "success" && \
+              "${{ needs.backend.result }}" == "success" && \
+              "${{ needs.frontend.result }}" == "success" && \
+              "${{ needs.docker.result }}" == "success" && \
+              "${{ needs.integration.result }}" == "success" ]]; then
+          echo "## 🎉 All checks passed! Ready to deploy 🚀" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "## ❌ Some checks failed. Please review the logs above." >> $GITHUB_STEP_SUMMARY
+        fi 

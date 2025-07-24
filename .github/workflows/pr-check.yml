@@ -1,0 +1,123 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Cancel previous runs when new commits are pushed
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # Quick validation checks for PR
+  quick-check:
+    runs-on: ubuntu-latest
+    name: Quick Validation
+    if: github.event.pull_request.draft == false
+    
+    steps:
+    - name: Checkout PR
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
+
+    - name: Validate shared types
+      run: |
+        echo "🔍 Validating shared TypeScript types..."
+        npx tsc --noEmit --target ES2020 --module commonjs shared/dto.ts
+        echo "✅ Shared types are valid!"
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Backend quick build & test
+      run: |
+        cd backend
+        echo "🏗️ Building backend..."
+        npm run build
+        echo "🧪 Running backend tests..."
+        npm run test
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Frontend type check & build
+      run: |
+        cd frontend
+        echo "🔍 Type checking frontend..."
+        npx tsc --noEmit
+        echo "🏗️ Building frontend..."
+        npm run build
+
+    - name: PR Summary
+      run: |
+        echo "## 🔍 PR Validation Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Shared Types**: Valid and compilable" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Backend**: Build and tests passed" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Frontend**: Type check and build passed" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🚀 Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ PR validation passed - ready for detailed review" >> $GITHUB_STEP_SUMMARY
+        echo "- 🔄 Full CI pipeline will run on approval/merge" >> $GITHUB_STEP_SUMMARY
+
+  # Security and quality checks
+  security-check:
+    runs-on: ubuntu-latest
+    name: Security & Quality
+    if: github.event.pull_request.draft == false
+    
+    steps:
+    - name: Checkout PR
+      uses: actions/checkout@v4
+
+    - name: Check for secrets
+      run: |
+        echo "🔍 Scanning for potential secrets..."
+        
+        # Check for common secret patterns (basic check)
+        if grep -r -i "password.*=" --include="*.ts" --include="*.js" . | grep -v node_modules | grep -v ".git" | head -5; then
+          echo "⚠️ Potential password patterns found - please review"
+        fi
+        
+        if grep -r -i "api.*key.*=" --include="*.ts" --include="*.js" . | grep -v node_modules | grep -v ".git" | head -5; then
+          echo "⚠️ Potential API key patterns found - please review"
+        fi
+        
+        echo "✅ Basic security scan completed"
+
+    - name: Check project structure
+      run: |
+        echo "🔍 Validating project structure..."
+        
+        # Required files
+        required_files=(
+          "shared/dto.ts"
+          "backend/package.json"
+          "backend/tsconfig.json"
+          "frontend/package.json"
+          "frontend/tsconfig.json"
+          "docker-compose.yml"
+        )
+        
+        for file in "${required_files[@]}"; do
+          if [[ ! -f "$file" ]]; then
+            echo "❌ Required file missing: $file"
+            exit 1
+          fi
+        done
+        
+        echo "✅ Project structure is valid" 
