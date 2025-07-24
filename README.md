@@ -142,14 +142,16 @@ cd frontend
 npm run dev
 ```
 *React app will start on http://localhost:3000*
+*Vite proxy will forward `/api/*` requests to backend on localhost:3001*
 
 #### Option 3: Test Backend Only
 ```bash
 cd backend
 npm run dev
 
-# Test the API directly
-curl http://localhost:3001/current-data
+# Test the API directly (choose one):
+curl http://localhost:3001/current-data  # Direct backend
+curl http://localhost:3000/api/current-data  # Via frontend proxy (if frontend is running)
 ```
 
 ### 🧪 Running Tests

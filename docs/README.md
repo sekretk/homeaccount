@@ -31,7 +31,7 @@ ADRs document important architectural decisions made during the project developm
 - **Frontend Dev**: Run `cd frontend && npm run dev`
 
 ### 🔗 API Documentation
-- **Backend Server**: http://localhost:3001
+- **Backend API**: http://localhost:3000/api/ (proxied through frontend)
 - **Frontend App**: http://localhost:3000
 - **API Endpoint**: `GET /current-data`
 

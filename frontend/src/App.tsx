@@ -11,7 +11,7 @@ function App() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get<CurrentDataDto>('http://localhost:3001/current-data');
+      const response = await axios.get<CurrentDataDto>('/api/current-data');
       setData(response.data);
     } catch (err) {
       setError('Failed to fetch data from backend');
@@ -44,7 +44,7 @@ function App() {
           ❌ {error}
         </div>
         <div style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
-          Make sure the backend is running on http://localhost:3001
+          Make sure the backend service is running and accessible
         </div>
         <div style={{ marginTop: '20px' }}>
           <button 
@@ -124,7 +124,7 @@ function App() {
         </div>
 
         <div style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>
-          <p>🔗 <strong>Backend Endpoint:</strong> GET http://localhost:3001/current-data</p>
+          <p>🔗 <strong>API Endpoint:</strong> GET /api/current-data</p>
           <p>📦 <strong>Using Shared Types:</strong> CurrentDataDto from ../shared/dto.ts</p>
           <p>🔘 <strong>Interactive:</strong> Click the button above to fetch fresh data</p>
         </div>
