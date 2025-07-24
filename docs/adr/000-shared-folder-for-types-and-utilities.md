@@ -1,7 +1,7 @@
 # ADR-000: Shared Folder for DTOs and Utilities
 
 ## Status
-**ACCEPTED** - 2024-01-15
+**ACCEPTED** - 2024-07-24
 
 ## Context
 
@@ -156,5 +156,5 @@ If this approach becomes insufficient, we can migrate to:
 ---
 
 **Decision made by**: Development Team  
-**Date**: 2024-01-15  
-**Review date**: 2024-04-15 (3 months) 
+**Date**: 2024-07-24  
+**Review date**: 2024-10-24 (3 months) 

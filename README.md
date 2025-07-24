@@ -46,16 +46,24 @@ homeaccount/
 - **Language**: TypeScript
 - **Testing**: Jest (unit + E2E tests)
 - **Port**: 3001
+- **Docker**: Multi-stage build with Alpine Linux
 
 ### Frontend (React)
 - **Framework**: React 18 with TypeScript
 - **Build Tool**: Vite
 - **HTTP Client**: Axios
 - **Port**: 3000
+- **Docker**: Nginx-served static build
 
 ### Shared Code
 - **Types**: Shared TypeScript interfaces in `/shared/dto.ts`
 - **Integration**: Both apps include shared folder in `tsconfig.json`
+
+### Docker Infrastructure
+- **Containerization**: Docker with multi-stage builds
+- **Orchestration**: Docker Compose with health checks
+- **Networking**: Custom bridge network for service communication
+- **Security**: Non-root users, security headers, optimized images
 
 ## 🎯 Current Features
 
@@ -95,7 +103,31 @@ npm install
 
 ### 🚀 Running the Application
 
-#### Option 1: Run Both Apps (Recommended)
+#### Option 1: Docker (Recommended for Production)
+
+**Prerequisites:**
+- Docker and Docker Compose installed
+
+**Quick Start:**
+```bash
+# Build and start all services
+./docker-scripts.sh up
+
+# Or manually with docker compose
+docker compose up -d
+```
+
+**Docker Helper Commands:**
+```bash
+./docker-scripts.sh build       # Build all images
+./docker-scripts.sh up          # Start services
+./docker-scripts.sh down        # Stop services
+./docker-scripts.sh logs        # View logs
+./docker-scripts.sh status      # Check status
+./docker-scripts.sh help        # Show all commands
+```
+
+#### Option 2: Development Mode
 
 **Terminal 1 - Start Backend:**
 ```bash
@@ -111,7 +143,7 @@ npm run dev
 ```
 *React app will start on http://localhost:3000*
 
-#### Option 2: Test Backend Only
+#### Option 3: Test Backend Only
 ```bash
 cd backend
 npm run dev
