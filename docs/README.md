@@ -23,6 +23,7 @@ ADRs document important architectural decisions made during the project developm
 
 ### 🚀 Getting Started
 - **[Main README](../README.md)** - Project overview and setup instructions
+- **[GitHub Setup Guide](./github-setup.md)** - Branch protection and PR validation setup
 - **[Shared Types](../shared/dto.ts)** - Current shared interfaces and DTOs
 
 ### 🧪 Development

@@ -117,6 +117,14 @@ Triggers on: `push` to `main`/`develop`, `pull_request`
 5. **🔗 Integration Tests** - Full-stack testing via docker-compose
 6. **📊 Build Summary** - Comprehensive status report
 
+#### ⚡ **PR Validation** (`.github/workflows/pr-check.yml`)
+Triggers on: `pull_request` events (fast feedback for PRs)
+
+**Fast Checks:**
+- **🔍 Quick Validation** - Shared types, backend build/test, frontend build
+- **🛡️ Security & Quality** - Basic secret scanning, project structure validation
+- **🏷️ Auto Labeling** - Automatically labels PRs based on changed files
+
 #### 🏥 **Status Check** (`.github/workflows/status.yml`)
 Triggers: `schedule` (every 6 hours), `manual`
 
@@ -131,6 +139,20 @@ Triggers: `schedule` (every 6 hours), `manual`
 - **Artifact uploads** (coverage, build outputs, Docker images)
 - **Dependency caching** for faster builds
 - **Comprehensive logging** with failure diagnostics
+
+### 🚀 Quick PR Setup
+
+After pushing to GitHub, set up branch protection:
+
+1. **Go to Settings → Branches**
+2. **Add rule** for `main` branch
+3. **Enable "Require status checks to pass before merging"**
+4. **Select these required checks:**
+   - `Quick Validation`
+   - `Security & Quality`
+5. **Enable "Require pull request before merging"**
+
+📋 **For detailed setup**: See [GitHub Setup Guide](./docs/github-setup.md)
 
 ## 📦 Getting Started
 
@@ -306,11 +328,25 @@ This prototype provides the foundation for a full home accounting app. Potential
 4. **Testing**: Test both apps with shared type validation
 5. **Type Safety**: TypeScript ensures consistency across stack
 
+### 🔄 CI/CD Integration
+
+When you push code or create a pull request:
+
+1. **✅ Shared Types** - Validated for compilation errors
+2. **🏗️ Backend Pipeline** - Build, unit tests, E2E tests (Node 18 & 20)
+3. **⚛️ Frontend Pipeline** - Build, type checking (Node 18 & 20)
+4. **📦 Docker Testing** - Build and validate Docker images
+5. **🔗 Integration Tests** - Full-stack testing with docker-compose
+6. **📊 Status Report** - Comprehensive build summary
+
+All checks must pass before merging to ensure code quality and compatibility.
+
 ## 📚 Documentation
 
 For detailed technical documentation and architectural decisions:
 
 - **[📁 Documentation Directory](./docs/README.md)** - Complete documentation index
+- **[🔒 GitHub Setup Guide](./docs/github-setup.md)** - Branch protection and PR checks setup
 - **[🏗️ Architecture Decisions](./docs/adr/README.md)** - ADRs documenting key decisions
 - **[📋 ADR-000: Shared Folder Approach](./docs/adr/000-shared-folder-for-types-and-utilities.md)** - Why we chose shared folder for types
 
