@@ -1,0 +1,45 @@
+name: Status Check
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    name: Quick Health Check
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Quick validation
+      run: |
+        echo "🔍 Quick project validation..."
+        
+        # Check project structure
+        test -f "shared/dto.ts" || exit 1
+        test -f "backend/package.json" || exit 1
+        test -f "frontend/package.json" || exit 1
+        test -f "docker-compose.yml" || exit 1
+        
+        # Validate shared types
+        npx tsc --noEmit --target ES2020 --module commonjs shared/dto.ts
+        
+        echo "✅ Project structure and shared types are valid!"
+
+    - name: Update status
+      run: |
+        echo "## 🏥 Health Check Status" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Project Structure**: Valid" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Shared Types**: Valid" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Configuration Files**: Present" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "_Last checked: $(date -u)_" >> $GITHUB_STEP_SUMMARY 

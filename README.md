@@ -1,5 +1,10 @@
 # 🏠 HomeAccount - Full-Stack Application
 
+[![CI/CD Pipeline](https://github.com/YOUR_USERNAME/homeaccount/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/homeaccount/actions/workflows/ci.yml)
+[![Status Check](https://github.com/YOUR_USERNAME/homeaccount/actions/workflows/status.yml/badge.svg)](https://github.com/YOUR_USERNAME/homeaccount/actions/workflows/status.yml)
+[![Docker](https://img.shields.io/badge/docker-supported-blue)](https://www.docker.com/)
+[![TypeScript](https://img.shields.io/badge/typescript-shared%20types-blue)](https://www.typescriptlang.org/)
+
 A modern full-stack home accounting application built with **React**, **NestJS**, and **TypeScript** using a simple shared folder approach for type safety across frontend and backend.
 
 ## 🏗️ Current State
@@ -38,6 +43,20 @@ homeaccount/
         ├── main.tsx              # React entry point
         └── App.tsx               # Main app component
 ```
+
+## 🔗 API Routing Architecture
+
+### Development Mode
+- **Backend**: Runs on `http://localhost:3001`
+- **Frontend**: Runs on `http://localhost:3000` with Vite dev server
+- **API Proxy**: Vite proxies `/api/*` → `http://localhost:3001/*`
+- **Frontend calls**: `/api/current-data` → Backend receives `/current-data`
+
+### Docker Mode
+- **Backend**: Internal container communication (no external port)
+- **Frontend**: Runs on `http://localhost:3000` with Nginx
+- **API Proxy**: Nginx proxies `/api/*` → `http://backend:3001/*`
+- **External Access**: Only frontend port 3000 is exposed
 
 ## 🚀 Tech Stack
 
@@ -80,6 +99,38 @@ homeaccount/
 - **Unit Tests**: Controller logic validation
 - **E2E Tests**: Full HTTP endpoint testing
 - **Type Safety**: Shared DTO validation in tests
+
+## 🔄 CI/CD Pipeline
+
+### GitHub Actions Workflows
+
+The project includes comprehensive CI/CD pipelines that automatically:
+
+#### 🚀 **Main CI Pipeline** (`.github/workflows/ci.yml`)
+Triggers on: `push` to `main`/`develop`, `pull_request`
+
+**Pipeline Stages:**
+1. **✅ Validate Shared Types** - Ensures shared TypeScript compiles correctly
+2. **🏗️ Backend Build & Test** - NestJS build, unit tests, E2E tests (Node 18 & 20)
+3. **⚛️ Frontend Build & Test** - React build, type checking (Node 18 & 20)
+4. **📦 Docker Build & Test** - Build and test Docker images
+5. **🔗 Integration Tests** - Full-stack testing via docker-compose
+6. **📊 Build Summary** - Comprehensive status report
+
+#### 🏥 **Status Check** (`.github/workflows/status.yml`)
+Triggers: `schedule` (every 6 hours), `manual`
+
+- Quick project structure validation
+- Shared types compilation check
+- Configuration files presence
+
+### CI Features
+- **Matrix builds** on Node.js 18 & 20
+- **Docker validation** with health checks
+- **Integration testing** with full stack
+- **Artifact uploads** (coverage, build outputs, Docker images)
+- **Dependency caching** for faster builds
+- **Comprehensive logging** with failure diagnostics
 
 ## 📦 Getting Started
 
