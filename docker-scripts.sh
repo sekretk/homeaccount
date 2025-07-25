@@ -46,6 +46,16 @@ show_help() {
     echo "  logs-fe     Show frontend logs only"
     echo "  clean       Remove all containers and images"
     echo "  status      Show status of all services"
+    echo ""
+    echo "Database Commands:"
+    echo "  db-start    Start database service only"
+    echo "  db-stop     Stop database service only"
+    echo "  db-logs     Show database logs"
+    echo "  db-shell    Connect to database shell (psql)"
+    echo "  db-reset    Reset database (WARNING: deletes all data)"
+    echo "  db-migrate  Run pending database migrations"
+    echo "  db-status   Show migration status"
+    echo ""
     echo "  help        Show this help message"
     echo ""
 }
@@ -129,6 +139,56 @@ show_status() {
     docker compose ps
 }
 
+# Database functions
+start_database() {
+    print_status "Starting database service..."
+    docker compose up database -d
+    print_success "Database service started!"
+    print_status "Database: postgresql://homeaccount_user:homeaccount_password@localhost:5432/homeaccount"
+}
+
+stop_database() {
+    print_status "Stopping database service..."
+    docker compose stop database
+    print_success "Database service stopped!"
+}
+
+show_database_logs() {
+    print_status "Showing database logs..."
+    docker compose logs database -f
+}
+
+database_shell() {
+    print_status "Connecting to database shell..."
+    print_warning "Use \\q to quit the PostgreSQL shell"
+    docker compose exec database psql -U homeaccount_user -d homeaccount
+}
+
+reset_database() {
+    print_warning "This will DELETE ALL database data! Are you sure? (y/N)"
+    read -r response
+    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        print_status "Resetting database..."
+        docker compose down database
+        docker volume rm homeaccount_postgres_data 2>/dev/null || true
+        docker compose up database -d
+        print_success "Database reset complete!"
+    else
+        print_status "Database reset cancelled"
+    fi
+}
+
+migrate_database() {
+    print_status "Running database migrations..."
+    cd database && node migrate.js run
+    print_success "Database migrations completed!"
+}
+
+migration_status() {
+    print_status "Checking migration status..."
+    cd database && node migrate.js status
+}
+
 # Main script logic
 case "$1" in
     "build")
@@ -163,6 +223,27 @@ case "$1" in
         ;;
     "status")
         show_status
+        ;;
+    "db-start")
+        start_database
+        ;;
+    "db-stop")
+        stop_database
+        ;;
+    "db-logs")
+        show_database_logs
+        ;;
+    "db-shell")
+        database_shell
+        ;;
+    "db-reset")
+        reset_database
+        ;;
+    "db-migrate")
+        migrate_database
+        ;;
+    "db-status")
+        migration_status
         ;;
     "help"|"--help"|"-h"|"")
         show_help

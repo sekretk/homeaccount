@@ -17,7 +17,8 @@ An Architecture Decision Record (ADR) is a document that captures an important a
 
 | Number | Title | Status | Date |
 |--------|-------|--------|------|
-| [000](./000-shared-folder-for-types-and-utilities.md) | Shared Folder for DTOs and Utilities | ACCEPTED | 2024-07-24 |
+| [000](./000-shared-folder-for-types-and-utilities.md) | Shared Folder for DTOs and Utilities | ACCEPTED | 2025-07-24 |
+| [001](./001-database-migration-system.md) | Database Migration System | ACCEPTED | 2025-07-24 |
 
 ## ADR Template
 

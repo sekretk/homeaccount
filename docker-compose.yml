@@ -1,14 +1,45 @@
 version: '3.8'
 
 services:
+  # Database service
+  database:
+    image: postgres:15-alpine
+    container_name: homeaccount-database
+    environment:
+      - POSTGRES_DB=homeaccount
+      - POSTGRES_USER=homeaccount_user
+      - POSTGRES_PASSWORD=homeaccount_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    networks:
+      - homeaccount-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homeaccount_user -d homeaccount"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
   # Backend service
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
     container_name: homeaccount-backend
+    ports:
+      - "3001:3001"
     environment:
       - NODE_ENV=production
+      - DATABASE_URL=postgresql://homeaccount_user:homeaccount_password@database:5432/homeaccount
+      - AUTO_MIGRATE=true
+      - MIGRATIONS_DIR=/database/migrations
+    depends_on:
+      database:
+        condition: service_healthy
     networks:
       - homeaccount-network
     restart: unless-stopped
@@ -39,6 +70,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
 
 networks:
   homeaccount-network:

@@ -13,6 +13,9 @@ RUN npm ci && npm cache clean --force
 # Copy shared folder first to the root level
 COPY shared /shared
 
+# Copy database migrations folder
+COPY database /database
+
 # Copy backend source code
 COPY backend/ ./
 
@@ -37,6 +40,9 @@ COPY --from=builder /app/dist ./dist
 # Copy shared folder to the correct location for runtime
 COPY --from=builder /shared /shared
 
+# Copy database migrations folder for runtime
+COPY --from=builder /database /database
+
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nestjs -u 1001
@@ -53,4 +59,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/current-data', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the application
-CMD ["node", "dist/backend/src/main.js"] 
+CMD ["node", "dist/app/src/main.js"] 
