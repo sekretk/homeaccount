@@ -8,6 +8,7 @@ import { IDatabaseService } from './database.service.interface';
 @Injectable()
 export class DatabaseService implements IDatabaseService, OnModuleInit, OnModuleDestroy {
   private pool!: Pool;
+  private postMigrationCallbacks: (() => Promise<void>)[] = [];
 
   async onModuleInit() {
     // Initialize database connection pool
@@ -28,6 +29,9 @@ export class DatabaseService implements IDatabaseService, OnModuleInit, OnModule
       const autoMigrate = process.env.AUTO_MIGRATE !== 'false';
       if (autoMigrate) {
         await this.runMigrations();
+        
+        // Execute post-migration callbacks (like seeding)
+        await this.executePostMigrationCallbacks();
       } else {
         console.log('⏭️ Auto-migrations disabled (AUTO_MIGRATE=false)');
       }
@@ -42,6 +46,33 @@ export class DatabaseService implements IDatabaseService, OnModuleInit, OnModule
     // Close database connection pool when module is destroyed
     await this.pool.end();
     console.log('🔌 Database connection pool closed');
+  }
+
+  /**
+   * Register a callback to be executed after migrations are complete
+   */
+  registerPostMigrationCallback(callback: () => Promise<void>): void {
+    this.postMigrationCallbacks.push(callback);
+  }
+
+  /**
+   * Execute all registered post-migration callbacks
+   */
+  private async executePostMigrationCallbacks(): Promise<void> {
+    if (this.postMigrationCallbacks.length === 0) {
+      return;
+    }
+
+    console.log(`🔗 Executing ${this.postMigrationCallbacks.length} post-migration callback(s)...`);
+    
+    for (const callback of this.postMigrationCallbacks) {
+      try {
+        await callback();
+      } catch (error) {
+        console.error('❌ Post-migration callback failed:', (error as Error).message);
+        // Continue with other callbacks even if one fails
+      }
+    }
   }
 
   /**
