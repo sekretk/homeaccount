@@ -7,8 +7,7 @@ import { IDatabaseService, DATABASE_SERVICE_TOKEN, DatabaseService } from '../sr
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
-  let databaseService: DatabaseService;
-
+  
   // Mock DatabaseService for e2e tests
   const mockDatabaseService: jest.Mocked<IDatabaseService> = {
     isHealthy: jest.fn(),
@@ -30,7 +29,6 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    databaseService = moduleFixture.get<DatabaseService>(DatabaseService);
     await app.init();
   });
 
@@ -193,10 +191,9 @@ describe('AppController (e2e)', () => {
         .get('/migrations')
         .expect(200);
 
-      const data: MigrationInfoResponseDto = response.body;
-      expect(data).toHaveProperty('version', '004_add_tags_and_metadata.sql');
-      expect(data).toHaveProperty('database', mockMigrationInfo);
-      expect(data).toHaveProperty('timestamp');
+      expect(response.body).toHaveProperty('version', '004_add_tags_and_metadata.sql');
+      expect(response.body).toHaveProperty('database', mockMigrationInfo);
+      expect(response.body).toHaveProperty('timestamp');
       expect(mockDatabaseService.getMigrationInfo).toHaveBeenCalledTimes(1);
     });
 
@@ -238,14 +235,13 @@ describe('AppController (e2e)', () => {
         .get('/version')
         .expect(200);
 
-      const data: VersionResponseDto = response.body;
-      expect(data).toHaveProperty('application');
-      expect(data).toHaveProperty('database', '004_add_tags_and_metadata.sql');
-      expect(data).toHaveProperty('migrations');
-      expect(data.migrations).toHaveProperty('applied', 4);
-      expect(data.migrations).toHaveProperty('total', 4);
-      expect(data.migrations).toHaveProperty('status', 'up-to-date');
-      expect(data).toHaveProperty('timestamp');
+      expect(response.body).toHaveProperty('application');
+      expect(response.body).toHaveProperty('database', '004_add_tags_and_metadata.sql');
+      expect(response.body).toHaveProperty('migrations');
+      expect(response.body.migrations).toHaveProperty('applied', 4);
+      expect(response.body.migrations).toHaveProperty('total', 4);
+      expect(response.body.migrations).toHaveProperty('status', 'up-to-date');
+      expect(response.body).toHaveProperty('timestamp');
       expect(mockDatabaseService.getMigrationInfo).toHaveBeenCalledTimes(1);
     });
 
