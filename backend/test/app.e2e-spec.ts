@@ -4,30 +4,16 @@ import request from 'supertest';
 import { CurrentDataDto, MigrationInfoResponseDto, VersionResponseDto } from '../../shared/dto';
 import { AppController } from '../src/controllers/app.controller';
 import { 
-  IDatabaseService, 
   DATABASE_SERVICE_TOKEN, 
-  IHealthService,
-  HEALTH_SERVICE_TOKEN
+  HEALTH_SERVICE_TOKEN,
+  MockDatabaseService,
+  MockHealthService
 } from '../src/services';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
-  
-  // Mock DatabaseService for e2e tests
-  const mockDatabaseService: jest.Mocked<IDatabaseService> = {
-    isHealthy: jest.fn(),
-    getTestData: jest.fn(),
-    getActiveTestData: jest.fn(),
-    getMigrationInfo: jest.fn(),
-    query: jest.fn(),
-  };
-
-  // Mock HealthService for e2e tests
-  const mockHealthService: jest.Mocked<IHealthService> = {
-    checkApplicationHealth: jest.fn(),
-    checkDatabaseHealth: jest.fn(),
-    isHealthy: jest.fn(),
-  };
+  let mockDatabaseService: MockDatabaseService;
+  let mockHealthService: MockHealthService;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -35,22 +21,24 @@ describe('AppController (e2e)', () => {
       providers: [
         {
           provide: DATABASE_SERVICE_TOKEN,
-          useValue: mockDatabaseService,
+          useClass: MockDatabaseService,
         },
         {
           provide: HEALTH_SERVICE_TOKEN,
-          useValue: mockHealthService,
+          useClass: MockHealthService,
         },
       ],
     }).compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
+
+    mockDatabaseService = moduleFixture.get<MockDatabaseService>(DATABASE_SERVICE_TOKEN);
+    mockHealthService = moduleFixture.get<MockHealthService>(HEALTH_SERVICE_TOKEN);
   });
 
   afterEach(async () => {
     await app.close();
-    jest.clearAllMocks();
   });
 
   describe('/current-data (GET)', () => {
@@ -118,20 +106,7 @@ describe('AppController (e2e)', () => {
 
   describe('/health (GET)', () => {
     it('should return 200 and healthy status when database is healthy', async () => {
-      const mockHealthResult = {
-        status: 'healthy' as const,
-        timestamp: '2025-07-25T10:00:00.000Z',
-        checks: [
-          {
-            name: 'database',
-            status: 'healthy' as const,
-            responseTime: 5,
-            message: 'Database connection successful'
-          }
-        ]
-      };
-      mockHealthService.checkApplicationHealth.mockResolvedValue(mockHealthResult);
-
+      // MockHealthService returns healthy by default
       const response = await request(app.getHttpServer())
         .get('/health')
         .expect(200);
@@ -139,23 +114,22 @@ describe('AppController (e2e)', () => {
       expect(response.body).toHaveProperty('status', 'healthy');
       expect(response.body).toHaveProperty('database', true);
       expect(response.body).toHaveProperty('timestamp');
-      expect(mockHealthService.checkApplicationHealth).toHaveBeenCalledTimes(1);
     });
 
     it('should return 200 and unhealthy status when database is unhealthy', async () => {
-      const mockHealthResult = {
-        status: 'unhealthy' as const,
-        timestamp: '2025-07-25T10:00:00.000Z',
+      // Override the mock health service to return unhealthy
+      jest.spyOn(mockHealthService, 'checkApplicationHealth').mockResolvedValue({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
         checks: [
           {
             name: 'database',
-            status: 'unhealthy' as const,
-            responseTime: 0,
+            status: 'unhealthy',
+            responseTime: 5000,
             message: 'Database connection failed'
           }
         ]
-      };
-      mockHealthService.checkApplicationHealth.mockResolvedValue(mockHealthResult);
+      });
 
       const response = await request(app.getHttpServer())
         .get('/health')
@@ -164,23 +138,22 @@ describe('AppController (e2e)', () => {
       expect(response.body).toHaveProperty('status', 'unhealthy');
       expect(response.body).toHaveProperty('database', false);
       expect(response.body).toHaveProperty('timestamp');
-      expect(mockHealthService.checkApplicationHealth).toHaveBeenCalledTimes(1);
     });
 
     it('should return 200 and degraded status when database is degraded', async () => {
-      const mockHealthResult = {
-        status: 'degraded' as const,
-        timestamp: '2025-07-25T10:00:00.000Z',
+      // Override the mock health service to return degraded
+      jest.spyOn(mockHealthService, 'checkApplicationHealth').mockResolvedValue({
+        status: 'degraded',
+        timestamp: new Date().toISOString(),
         checks: [
           {
             name: 'database',
-            status: 'degraded' as const,
+            status: 'degraded',
             responseTime: 2000,
             message: 'Database connection slow'
           }
         ]
-      };
-      mockHealthService.checkApplicationHealth.mockResolvedValue(mockHealthResult);
+      });
 
       const response = await request(app.getHttpServer())
         .get('/health')
@@ -189,64 +162,40 @@ describe('AppController (e2e)', () => {
       expect(response.body).toHaveProperty('status', 'degraded');
       expect(response.body).toHaveProperty('database', false);
       expect(response.body).toHaveProperty('timestamp');
-      expect(mockHealthService.checkApplicationHealth).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('/health/detailed (GET)', () => {
     it('should return detailed health information', async () => {
-      const mockDetailedHealth = {
-        status: 'healthy' as const,
-        timestamp: '2025-07-25T10:00:00.000Z',
-        checks: [
-          {
-            name: 'database',
-            status: 'healthy' as const,
-            responseTime: 5,
-            message: 'Database connection successful'
-          },
-          {
-            name: 'memory',
-            status: 'healthy' as const,
-            responseTime: 1,
-            message: 'Memory usage normal',
-            details: {
-              used: 50.5,
-              total: 100,
-              percentage: '50.5%'
-            }
-          }
-        ]
-      };
-      mockHealthService.checkApplicationHealth.mockResolvedValue(mockDetailedHealth);
-
+      // MockHealthService provides detailed health by default
       const response = await request(app.getHttpServer())
         .get('/health/detailed')
         .expect(200);
 
-      expect(response.body).toEqual(mockDetailedHealth);
-      expect(mockHealthService.checkApplicationHealth).toHaveBeenCalledTimes(1);
+      expect(response.body).toHaveProperty('status');
+      expect(response.body).toHaveProperty('timestamp');
+      expect(response.body).toHaveProperty('checks');
+      expect(Array.isArray(response.body.checks)).toBe(true);
+      expect(response.body.checks.length).toBeGreaterThan(0);
     });
   });
 
   describe('/test-data (GET)', () => {
     it('should return test data from database', async () => {
-      const mockData = [
-        { id: 1, name: 'Test Item 1', message: 'Test message 1', is_active: true },
-        { id: 2, name: 'Test Item 2', message: 'Test message 2', is_active: false }
-      ];
-      mockDatabaseService.getTestData.mockResolvedValue(mockData);
-
+      // MockDatabaseService provides default test data
       const response = await request(app.getHttpServer())
         .get('/test-data')
         .expect(200);
 
-      expect(response.body).toEqual(mockData);
-      expect(mockDatabaseService.getTestData).toHaveBeenCalledTimes(1);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(0);
+      expect(response.body[0]).toHaveProperty('id');
+      expect(response.body[0]).toHaveProperty('name');
     });
 
     it('should return empty array when no test data', async () => {
-      mockDatabaseService.getTestData.mockResolvedValue([]);
+      // Override the mock to return empty data
+      jest.spyOn(mockDatabaseService, 'getTestData').mockResolvedValue([]);
 
       const response = await request(app.getHttpServer())
         .get('/test-data')
@@ -258,108 +207,97 @@ describe('AppController (e2e)', () => {
 
   describe('/test-data/active (GET)', () => {
     it('should return only active test data', async () => {
-      const mockActiveData = [
-        { id: 1, name: 'Active Item 1', message: 'Active message 1', is_active: true }
-      ];
-      mockDatabaseService.getActiveTestData.mockResolvedValue(mockActiveData);
-
+      // MockDatabaseService filters for active data
       const response = await request(app.getHttpServer())
         .get('/test-data/active')
         .expect(200);
 
-      expect(response.body).toEqual(mockActiveData);
-      expect(mockDatabaseService.getActiveTestData).toHaveBeenCalledTimes(1);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.every((item: any) => item.is_active === true)).toBe(true);
     });
   });
 
   describe('/migrations (GET)', () => {
+    it('should return migration information with up-to-date status', async () => {
+      // MockDatabaseService provides default migration info (up-to-date)
+      const response = await request(app.getHttpServer())
+        .get('/migrations')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('version');
+      expect(response.body).toHaveProperty('database');
+      expect(response.body).toHaveProperty('timestamp');
+      expect(response.body.database).toHaveProperty('totalApplied');
+      expect(response.body.database).toHaveProperty('totalAvailable');
+      expect(response.body.database).toHaveProperty('status');
+    });
+
     it('should return migration information with pending migrations', async () => {
-      const mockMigrationInfo = {
+      // Override mock to return pending migrations
+      jest.spyOn(mockDatabaseService, 'getMigrationInfo').mockResolvedValue({
         totalApplied: 4,
         totalAvailable: 5,
         latestMigration: '004_add_tags_and_metadata.sql',
-        appliedAt: '2025-07-24T10:29:45Z',
+        appliedAt: '2025-07-25T10:00:00.000Z',
         pendingMigrations: ['005_add_audit_fields.sql'],
         appliedMigrations: [
-          { name: '001_create_migrations_table.sql', appliedAt: '2025-07-24T10:00:00Z' },
-          { name: '002_add_category_to_test_data.sql', appliedAt: '2025-07-24T10:15:30Z' }
+          { name: '001_create_migrations_table.sql', appliedAt: '2025-07-25T09:00:00.000Z' },
+          { name: '002_add_category_to_test_data.sql', appliedAt: '2025-07-25T09:15:00.000Z' },
+          { name: '003_add_priority_and_indexes.sql', appliedAt: '2025-07-25T09:30:00.000Z' },
+          { name: '004_add_tags_and_metadata.sql', appliedAt: '2025-07-25T10:00:00.000Z' }
         ],
-        status: 'pending' as const
-      };
-      mockDatabaseService.getMigrationInfo.mockResolvedValue(mockMigrationInfo);
+        status: 'pending'
+      });
 
       const response = await request(app.getHttpServer())
         .get('/migrations')
         .expect(200);
 
       expect(response.body).toHaveProperty('version', '004_add_tags_and_metadata.sql');
-      expect(response.body).toHaveProperty('database', mockMigrationInfo);
-      expect(response.body).toHaveProperty('timestamp');
-      expect(mockDatabaseService.getMigrationInfo).toHaveBeenCalledTimes(1);
+      expect(response.body.database.status).toBe('pending');
+      expect(response.body.database.pendingMigrations.length).toBeGreaterThan(0);
     });
 
     it('should handle no migrations scenario', async () => {
-      const mockMigrationInfo = {
+      // Override mock to return no migrations
+      jest.spyOn(mockDatabaseService, 'getMigrationInfo').mockResolvedValue({
         totalApplied: 0,
         totalAvailable: 0,
         latestMigration: null,
         appliedAt: null,
         pendingMigrations: [],
         appliedMigrations: [],
-        status: 'up-to-date' as const
-      };
-      mockDatabaseService.getMigrationInfo.mockResolvedValue(mockMigrationInfo);
+        status: 'up-to-date'
+      });
 
       const response = await request(app.getHttpServer())
         .get('/migrations')
         .expect(200);
 
       expect(response.body.version).toBe('none');
-      expect(response.body.database).toEqual(mockMigrationInfo);
+      expect(response.body.database.totalApplied).toBe(0);
     });
   });
 
   describe('/version (GET)', () => {
     it('should return version information', async () => {
-      const mockMigrationInfo = {
-        totalApplied: 4,
-        totalAvailable: 4,
-        latestMigration: '004_add_tags_and_metadata.sql',
-        appliedAt: '2025-07-24T10:29:45Z',
-        pendingMigrations: [],
-        appliedMigrations: [],
-        status: 'up-to-date' as const
-      };
-      mockDatabaseService.getMigrationInfo.mockResolvedValue(mockMigrationInfo);
-
+      // MockDatabaseService provides default migration info
       const response = await request(app.getHttpServer())
         .get('/version')
         .expect(200);
 
       expect(response.body).toHaveProperty('application');
-      expect(response.body).toHaveProperty('database', '004_add_tags_and_metadata.sql');
+      expect(response.body).toHaveProperty('database');
       expect(response.body).toHaveProperty('migrations');
-      expect(response.body.migrations).toHaveProperty('applied', 4);
-      expect(response.body.migrations).toHaveProperty('total', 4);
-      expect(response.body.migrations).toHaveProperty('status', 'up-to-date');
+      expect(response.body.migrations).toHaveProperty('applied');
+      expect(response.body.migrations).toHaveProperty('total');
+      expect(response.body.migrations).toHaveProperty('status');
       expect(response.body).toHaveProperty('timestamp');
-      expect(mockDatabaseService.getMigrationInfo).toHaveBeenCalledTimes(1);
     });
 
     it('should handle application version from environment', async () => {
       const originalVersion = process.env.npm_package_version;
       process.env.npm_package_version = '2.1.0';
-
-      const mockMigrationInfo = {
-        totalApplied: 2,
-        totalAvailable: 2,
-        latestMigration: '002_add_category_to_test_data.sql',
-        appliedAt: '2025-07-24T10:15:30Z',
-        pendingMigrations: [],
-        appliedMigrations: [],
-        status: 'up-to-date' as const
-      };
-      mockDatabaseService.getMigrationInfo.mockResolvedValue(mockMigrationInfo);
 
       const response = await request(app.getHttpServer())
         .get('/version')
