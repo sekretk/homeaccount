@@ -1,10 +1,15 @@
-import { Controller, Get } from '@nestjs/common';
-import { CurrentDataDto, MigrationInfoResponseDto, VersionResponseDto } from '../../shared/dto';
-import { DatabaseService } from './database.service';
+import { Controller, Get, Inject } from '@nestjs/common';
+import { CurrentDataDto, MigrationInfoResponseDto, VersionResponseDto } from '../../../shared/dto';
+import { IDatabaseService, DATABASE_SERVICE_TOKEN, IHealthService, HEALTH_SERVICE_TOKEN } from '../services';
 
 @Controller()
 export class AppController {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    @Inject(DATABASE_SERVICE_TOKEN) 
+    private readonly databaseService: IDatabaseService,
+    @Inject(HEALTH_SERVICE_TOKEN)
+    private readonly healthService: IHealthService
+  ) {}
 
   @Get('/current-data')
   getCurrentData(): CurrentDataDto {
@@ -16,13 +21,19 @@ export class AppController {
 
   @Get('/health')
   async getHealth(): Promise<{ status: string; database: boolean; timestamp: string }> {
-    const isDatabaseHealthy = await this.databaseService.isHealthy();
+    const healthResult = await this.healthService.checkApplicationHealth();
+    const databaseCheck = healthResult.checks.find(check => check.name === 'database');
     
     return {
-      status: isDatabaseHealthy ? 'healthy' : 'unhealthy',
-      database: isDatabaseHealthy,
-      timestamp: new Date().toISOString()
+      status: healthResult.status,
+      database: databaseCheck?.status === 'healthy',
+      timestamp: healthResult.timestamp
     };
+  }
+
+  @Get('/health/detailed')
+  async getDetailedHealth() {
+    return this.healthService.checkApplicationHealth();
   }
 
   @Get('/test-data')
