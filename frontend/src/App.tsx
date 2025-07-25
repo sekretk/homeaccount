@@ -1,6 +1,41 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { CurrentDataDto } from '../../shared/dto';
+import { CurrentDataDto, VersionResponseDto } from '../../shared/dto';
+
+// Migration Info Component
+function MigrationInfo() {
+  const [migrationInfo, setMigrationInfo] = useState<VersionResponseDto | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchMigrationInfo = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get<VersionResponseDto>('/api/version');
+      setMigrationInfo(response.data);
+    } catch (error) {
+      console.error('Failed to fetch migration info:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMigrationInfo();
+  }, []);
+
+  if (loading) return <p>🔄 <strong>Migrations:</strong> Loading...</p>;
+  if (!migrationInfo) return <p>❌ <strong>Migrations:</strong> Failed to load</p>;
+
+  const statusEmoji = migrationInfo.migrations.status === 'up-to-date' ? '✅' : 
+                     migrationInfo.migrations.status === 'pending' ? '⏳' : '❓';
+
+  return (
+    <p>
+      {statusEmoji} <strong>Database:</strong> {migrationInfo.database} 
+      ({migrationInfo.migrations.applied}/{migrationInfo.migrations.total} migrations, {migrationInfo.migrations.status})
+    </p>
+  );
+}
 
 function App() {
   const [data, setData] = useState<CurrentDataDto | null>(null);
@@ -123,11 +158,12 @@ function App() {
           </div>
         </div>
 
-        <div style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>
-          <p>🔗 <strong>API Endpoint:</strong> GET /api/current-data</p>
-          <p>📦 <strong>Using Shared Types:</strong> CurrentDataDto from ../shared/dto.ts</p>
-          <p>🔘 <strong>Interactive:</strong> Click the button above to fetch fresh data</p>
-        </div>
+                  <div style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>
+            <p>🔗 <strong>API Endpoint:</strong> GET /api/current-data</p>
+            <p>📦 <strong>Using Shared Types:</strong> CurrentDataDto from ../shared/dto.ts</p>
+            <p>🔘 <strong>Interactive:</strong> Click the button above to fetch fresh data</p>
+            <MigrationInfo />
+          </div>
       </div>
     </div>
   );

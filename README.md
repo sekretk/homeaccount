@@ -21,7 +21,8 @@ This is a **working prototype** demonstrating:
 ```
 homeaccount/
 ├── shared/
-│   └── dto.ts                     # Shared TypeScript interfaces
+│   ├── dto.ts                     # Main shared TypeScript interfaces
+│   └── migration.dto.ts           # Migration-specific DTOs
 ├── backend/                       # NestJS API Server
 │   ├── package.json              
 │   ├── tsconfig.json              # Includes "../shared/**/*"
@@ -63,6 +64,7 @@ homeaccount/
 ### Backend (NestJS)
 - **Framework**: NestJS with Express
 - **Language**: TypeScript
+- **Database**: PostgreSQL 15 with auto-migrations on startup
 - **Testing**: Jest (unit + E2E tests)
 - **Port**: 3001
 - **Docker**: Multi-stage build with Alpine Linux
@@ -74,13 +76,22 @@ homeaccount/
 - **Port**: 3000
 - **Docker**: Nginx-served static build
 
+### Database (PostgreSQL)
+- **Engine**: PostgreSQL 15 Alpine
+- **Port**: 5432
+- **Auto-Migrations**: Runs on backend startup (configurable)
+- **Data Persistence**: Docker volume with initialization scripts
+- **Sample Data**: Pre-loaded test data for development
+- **Management**: Built-in CLI tools and migration system
+
 ### Shared Code
-- **Types**: Shared TypeScript interfaces in `/shared/dto.ts`
+- **Types**: Shared TypeScript interfaces in `/shared/dto.ts` and `/shared/migration.dto.ts`
+- **DTOs**: CurrentDataDto, MigrationStatusDto, VersionResponseDto, and more
 - **Integration**: Both apps include shared folder in `tsconfig.json`
 
 ### Docker Infrastructure
 - **Containerization**: Docker with multi-stage builds
-- **Orchestration**: Docker Compose with health checks
+- **Orchestration**: Docker Compose with health checks and service dependencies
 - **Networking**: Custom bridge network for service communication
 - **Security**: Non-root users, security headers, optimized images
 
@@ -200,6 +211,21 @@ docker compose up -d
 ./docker-scripts.sh help        # Show all commands
 ```
 
+**Database Management:**
+```bash
+./docker-scripts.sh db-start    # Start PostgreSQL database only
+./docker-scripts.sh db-stop     # Stop database service
+./docker-scripts.sh db-logs     # Show database logs
+./docker-scripts.sh db-shell    # Connect to PostgreSQL shell
+./docker-scripts.sh db-reset    # Reset database (deletes all data!)
+
+# Or from backend directory:
+cd backend
+npm run db:start                 # Start database
+npm run db:shell                 # Connect to database
+npm run db:logs                  # View database logs
+```
+
 #### Option 2: Development Mode
 
 **Terminal 1 - Start Backend:**
@@ -225,6 +251,10 @@ npm run dev
 # Test the API directly (choose one):
 curl http://localhost:3001/current-data  # Direct backend
 curl http://localhost:3000/api/current-data  # Via frontend proxy (if frontend is running)
+
+# Check migration status and version
+curl http://localhost:3001/version         # Version info
+curl http://localhost:3001/migrations      # Detailed migration status
 ```
 
 ### 🧪 Running Tests
@@ -251,7 +281,7 @@ Returns current server time and a message.
 **Response:**
 ```json
 {
-  "currentTime": "2024-01-15T10:30:45.123Z",
+  "currentTime": "2025-01-15T10:30:45.123Z",
   "message": "Hello from NestJS backend!"
 }
 ```
