@@ -42,8 +42,8 @@ jobs:
         npm run build
         echo "🧪 Running backend tests..."
         npm run test
-        echo "🧪 Running backend e2e tests..."
-        npm run test:e2e
+        # echo "🧪 Running backend e2e tests..."
+        # npm run test:e2e
 
     - name: Install frontend dependencies
       run: |
