@@ -34,7 +34,9 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://homeaccount_user:homeaccount_password@database:5432/homeaccount
       - AUTO_MIGRATE=true
+      - AUTO_SEED=true
       - MIGRATIONS_DIR=/database/migrations
+      - SEEDS_DIR=/database/seeds
     depends_on:
       database:
         condition: service_healthy
