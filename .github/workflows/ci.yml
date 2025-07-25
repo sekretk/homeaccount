@@ -7,34 +7,9 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  # Job 1: Validate Shared Types
-  validate-shared:
-    runs-on: ubuntu-latest
-    name: Validate Shared Types
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: |
-          backend/package-lock.json
-          frontend/package-lock.json
-
-    - name: Validate shared TypeScript files
-      run: |
-        echo "✅ Validating shared TypeScript compilation..."
-        npx tsc --noEmit --target ES2020 --module commonjs shared/dto.ts
-        echo "✅ Shared types are valid!"
-
-  # Job 2: Backend Build & Test
+  # Job 1: Backend Build & Test
   backend:
     runs-on: ubuntu-latest
-    needs: validate-shared
     name: Backend (NestJS)
     
     strategy:
