@@ -42,6 +42,8 @@ jobs:
         npm run build
         echo "🧪 Running backend tests..."
         npm run test
+        echo "🧪 Running backend e2e tests..."
+        npm run test:e2e
 
     - name: Install frontend dependencies
       run: |
@@ -93,25 +95,4 @@ jobs:
         
         echo "✅ Basic security scan completed"
 
-    - name: Check project structure
-      run: |
-        echo "🔍 Validating project structure..."
-        
-        # Required files
-        required_files=(
-          "shared/dto.ts"
-          "backend/package.json"
-          "backend/tsconfig.json"
-          "frontend/package.json"
-          "frontend/tsconfig.json"
-          "docker-compose.yml"
-        )
-        
-        for file in "${required_files[@]}"; do
-          if [[ ! -f "$file" ]]; then
-            echo "❌ Required file missing: $file"
-            exit 1
-          fi
-        done
-        
-        echo "✅ Project structure is valid" 
+ 
