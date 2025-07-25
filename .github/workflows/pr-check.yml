@@ -42,8 +42,8 @@ jobs:
         npm run build
         echo "🧪 Running backend tests..."
         npm run test
-        # echo "🧪 Running backend e2e tests..."
-        # npm run test:e2e
+        echo "🧪 Running backend e2e tests..."
+        npm run test:e2e
 
     - name: Install frontend dependencies
       run: |
@@ -62,8 +62,7 @@ jobs:
       run: |
         echo "## 🔍 PR Validation Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "✅ **Shared Types**: Valid and compilable" >> $GITHUB_STEP_SUMMARY
-        echo "✅ **Backend**: Build and tests passed" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Backend**: Build, unit tests, and e2e tests passed" >> $GITHUB_STEP_SUMMARY
         echo "✅ **Frontend**: Type check and build passed" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 🚀 Next Steps" >> $GITHUB_STEP_SUMMARY
