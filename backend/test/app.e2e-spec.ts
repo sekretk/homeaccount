@@ -1,20 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppController } from '../src/app.controller';
-import { DatabaseService } from '../src/database.service';
 import { CurrentDataDto, MigrationInfoResponseDto, VersionResponseDto } from '../../shared/dto';
+import { AppController } from '../src/controllers/app.controller';
+import { IDatabaseService, DATABASE_SERVICE_TOKEN, DatabaseService } from '../src/services';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
   let databaseService: DatabaseService;
 
   // Mock DatabaseService for e2e tests
-  const mockDatabaseService = {
+  const mockDatabaseService: jest.Mocked<IDatabaseService> = {
     isHealthy: jest.fn(),
     getTestData: jest.fn(),
     getActiveTestData: jest.fn(),
     getMigrationInfo: jest.fn(),
+    query: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -22,7 +23,7 @@ describe('AppController (e2e)', () => {
       controllers: [AppController],
       providers: [
         {
-          provide: DatabaseService,
+          provide: DATABASE_SERVICE_TOKEN,
           useValue: mockDatabaseService,
         },
       ],

@@ -2,10 +2,11 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Pool, PoolClient } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
-import { MigrationStatusDto, AppliedMigrationDto } from '../../shared/dto';
+import { MigrationStatusDto, AppliedMigrationDto } from '../../../../shared/migration.dto';
+import { IDatabaseService } from './database.service.interface';
 
 @Injectable()
-export class DatabaseService implements OnModuleInit, OnModuleDestroy {
+export class DatabaseService implements IDatabaseService, OnModuleInit, OnModuleDestroy {
   private pool!: Pool;
 
   async onModuleInit() {
@@ -58,7 +59,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
     
     // Default: relative to this service file
-    return path.join(__dirname, '../../database/migrations');
+    return path.join(__dirname, '../../../database/migrations');
   }
 
   /**
