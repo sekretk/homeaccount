@@ -3,7 +3,12 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { CurrentDataDto, MigrationInfoResponseDto, VersionResponseDto } from '../../shared/dto';
 import { AppController } from '../src/controllers/app.controller';
-import { IDatabaseService, DATABASE_SERVICE_TOKEN, DatabaseService } from '../src/services';
+import { 
+  IDatabaseService, 
+  DATABASE_SERVICE_TOKEN, 
+  IHealthService,
+  HEALTH_SERVICE_TOKEN
+} from '../src/services';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
@@ -17,6 +22,13 @@ describe('AppController (e2e)', () => {
     query: jest.fn(),
   };
 
+  // Mock HealthService for e2e tests
+  const mockHealthService: jest.Mocked<IHealthService> = {
+    checkApplicationHealth: jest.fn(),
+    checkDatabaseHealth: jest.fn(),
+    isHealthy: jest.fn(),
+  };
+
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
@@ -24,6 +36,10 @@ describe('AppController (e2e)', () => {
         {
           provide: DATABASE_SERVICE_TOKEN,
           useValue: mockDatabaseService,
+        },
+        {
+          provide: HEALTH_SERVICE_TOKEN,
+          useValue: mockHealthService,
         },
       ],
     }).compile();
@@ -102,7 +118,19 @@ describe('AppController (e2e)', () => {
 
   describe('/health (GET)', () => {
     it('should return 200 and healthy status when database is healthy', async () => {
-      mockDatabaseService.isHealthy.mockResolvedValue(true);
+      const mockHealthResult = {
+        status: 'healthy' as const,
+        timestamp: '2025-07-25T10:00:00.000Z',
+        checks: [
+          {
+            name: 'database',
+            status: 'healthy' as const,
+            responseTime: 5,
+            message: 'Database connection successful'
+          }
+        ]
+      };
+      mockHealthService.checkApplicationHealth.mockResolvedValue(mockHealthResult);
 
       const response = await request(app.getHttpServer())
         .get('/health')
@@ -111,11 +139,23 @@ describe('AppController (e2e)', () => {
       expect(response.body).toHaveProperty('status', 'healthy');
       expect(response.body).toHaveProperty('database', true);
       expect(response.body).toHaveProperty('timestamp');
-      expect(mockDatabaseService.isHealthy).toHaveBeenCalledTimes(1);
+      expect(mockHealthService.checkApplicationHealth).toHaveBeenCalledTimes(1);
     });
 
     it('should return 200 and unhealthy status when database is unhealthy', async () => {
-      mockDatabaseService.isHealthy.mockResolvedValue(false);
+      const mockHealthResult = {
+        status: 'unhealthy' as const,
+        timestamp: '2025-07-25T10:00:00.000Z',
+        checks: [
+          {
+            name: 'database',
+            status: 'unhealthy' as const,
+            responseTime: 0,
+            message: 'Database connection failed'
+          }
+        ]
+      };
+      mockHealthService.checkApplicationHealth.mockResolvedValue(mockHealthResult);
 
       const response = await request(app.getHttpServer())
         .get('/health')
@@ -124,7 +164,68 @@ describe('AppController (e2e)', () => {
       expect(response.body).toHaveProperty('status', 'unhealthy');
       expect(response.body).toHaveProperty('database', false);
       expect(response.body).toHaveProperty('timestamp');
-      expect(mockDatabaseService.isHealthy).toHaveBeenCalledTimes(1);
+      expect(mockHealthService.checkApplicationHealth).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return 200 and degraded status when database is degraded', async () => {
+      const mockHealthResult = {
+        status: 'degraded' as const,
+        timestamp: '2025-07-25T10:00:00.000Z',
+        checks: [
+          {
+            name: 'database',
+            status: 'degraded' as const,
+            responseTime: 2000,
+            message: 'Database connection slow'
+          }
+        ]
+      };
+      mockHealthService.checkApplicationHealth.mockResolvedValue(mockHealthResult);
+
+      const response = await request(app.getHttpServer())
+        .get('/health')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('status', 'degraded');
+      expect(response.body).toHaveProperty('database', false);
+      expect(response.body).toHaveProperty('timestamp');
+      expect(mockHealthService.checkApplicationHealth).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('/health/detailed (GET)', () => {
+    it('should return detailed health information', async () => {
+      const mockDetailedHealth = {
+        status: 'healthy' as const,
+        timestamp: '2025-07-25T10:00:00.000Z',
+        checks: [
+          {
+            name: 'database',
+            status: 'healthy' as const,
+            responseTime: 5,
+            message: 'Database connection successful'
+          },
+          {
+            name: 'memory',
+            status: 'healthy' as const,
+            responseTime: 1,
+            message: 'Memory usage normal',
+            details: {
+              used: 50.5,
+              total: 100,
+              percentage: '50.5%'
+            }
+          }
+        ]
+      };
+      mockHealthService.checkApplicationHealth.mockResolvedValue(mockDetailedHealth);
+
+      const response = await request(app.getHttpServer())
+        .get('/health/detailed')
+        .expect(200);
+
+      expect(response.body).toEqual(mockDetailedHealth);
+      expect(mockHealthService.checkApplicationHealth).toHaveBeenCalledTimes(1);
     });
   });
 
