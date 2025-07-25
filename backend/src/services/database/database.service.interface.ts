@@ -25,4 +25,10 @@ export interface IDatabaseService {
    * Execute a query with parameters
    */
   query(text: string, params?: any[]): Promise<any>;
+
+  /**
+   * Register a callback to be executed after migrations are complete
+   * Note: Only available in real DatabaseService, not in mock
+   */
+  registerPostMigrationCallback?(callback: () => Promise<void>): void;
 } 
