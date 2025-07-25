@@ -16,34 +16,7 @@ This is a **working prototype** demonstrating:
 - ✅ **Complete test suite** (unit + E2E tests)
 - ✅ **Type-safe communication** using shared DTOs
 
-## 📁 Project Structure
 
-```
-homeaccount/
-├── shared/
-│   ├── dto.ts                     # Main shared TypeScript interfaces
-│   └── migration.dto.ts           # Migration-specific DTOs
-├── backend/                       # NestJS API Server
-│   ├── package.json              
-│   ├── tsconfig.json              # Includes "../shared/**/*"
-│   ├── jest.config.js             # Jest unit test config
-│   ├── src/
-│   │   ├── main.ts               # Server bootstrap (port 3001)
-│   │   ├── app.module.ts         # NestJS module
-│   │   ├── app.controller.ts     # API endpoints
-│   │   └── app.controller.spec.ts # Unit tests
-│   └── test/
-│       ├── jest-e2e.json         # E2E test config
-│       └── app.e2e-spec.ts       # E2E tests
-└── frontend/                      # React Web App
-    ├── package.json              
-    ├── tsconfig.json              # Includes "../shared" 
-    ├── vite.config.ts             # Vite config (port 3000)
-    ├── index.html                
-    └── src/
-        ├── main.tsx              # React entry point
-        └── App.tsx               # Main app component
-```
 
 ## 🔗 API Routing Architecture
 
@@ -378,7 +351,6 @@ For detailed technical documentation and architectural decisions:
 - **[📁 Documentation Directory](./docs/README.md)** - Complete documentation index
 - **[🔒 GitHub Setup Guide](./docs/github-setup.md)** - Branch protection and PR checks setup
 - **[🏗️ Architecture Decisions](./docs/adr/README.md)** - ADRs documenting key decisions
-- **[📋 ADR-000: Shared Folder Approach](./docs/adr/000-shared-folder-for-types-and-utilities.md)** - Why we chose shared folder for types
 
 ## 📄 License
 

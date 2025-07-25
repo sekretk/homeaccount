@@ -43,22 +43,7 @@ graph TD
     E --> K
 ```
 
-### File Structure
 
-```
-database/
-├── init/                           # Initial schema (Docker first-run only)
-│   └── 01-init.sql                # Base tables + seed data
-├── migrations/                     # Sequential migrations
-│   ├── 001_create_migrations_table.sql
-│   ├── 002_add_category_to_test_data.sql
-│   ├── 003_add_priority_and_indexes.sql
-│   └── 004_add_tags_and_metadata.sql
-├── migrate.js                      # CLI runner
-└── README.md                       # Database documentation
-```
-
----
 
 ## Initial Setup & Values
 
