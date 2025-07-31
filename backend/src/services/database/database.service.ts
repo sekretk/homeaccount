@@ -3,12 +3,12 @@ import { Pool, PoolClient } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
 import { MigrationStatusDto, AppliedMigrationDto } from '../../../../shared/migration.dto';
+import { ExpenseDto } from '../../../../shared/dto';
 import { IDatabaseService } from './database.service.interface';
 
 @Injectable()
 export class DatabaseService implements IDatabaseService, OnModuleInit, OnModuleDestroy {
   private pool!: Pool;
-  private postMigrationCallbacks: (() => Promise<void>)[] = [];
 
   async onModuleInit() {
     // Initialize database connection pool
@@ -29,9 +29,6 @@ export class DatabaseService implements IDatabaseService, OnModuleInit, OnModule
       const autoMigrate = process.env.AUTO_MIGRATE !== 'false';
       if (autoMigrate) {
         await this.runMigrations();
-        
-        // Execute post-migration callbacks (like seeding)
-        await this.executePostMigrationCallbacks();
       } else {
         console.log('⏭️ Auto-migrations disabled (AUTO_MIGRATE=false)');
       }
@@ -44,34 +41,25 @@ export class DatabaseService implements IDatabaseService, OnModuleInit, OnModule
 
   async onModuleDestroy() {
     // Close database connection pool when module is destroyed
-    await this.pool.end();
-    console.log('🔌 Database connection pool closed');
-  }
-
-  /**
-   * Register a callback to be executed after migrations are complete
-   */
-  registerPostMigrationCallback(callback: () => Promise<void>): void {
-    this.postMigrationCallbacks.push(callback);
-  }
-
-  /**
-   * Execute all registered post-migration callbacks
-   */
-  private async executePostMigrationCallbacks(): Promise<void> {
-    if (this.postMigrationCallbacks.length === 0) {
-      return;
+    if (this.pool) {
+      await this.pool.end();
+      console.log('🔌 Database connection pool closed');
     }
+  }
 
-    console.log(`🔗 Executing ${this.postMigrationCallbacks.length} post-migration callback(s)...`);
-    
-    for (const callback of this.postMigrationCallbacks) {
-      try {
-        await callback();
-      } catch (error) {
-        console.error('❌ Post-migration callback failed:', (error as Error).message);
-        // Continue with other callbacks even if one fails
-      }
+  /**
+   * Execute a query with parameters
+   */
+  async query(text: string, params?: any[]): Promise<any> {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(text, params);
+      return result;
+    } catch (error) {
+      console.error('Database query error:', (error as Error).message);
+      throw error;
+    } finally {
+      client.release();
     }
   }
 
@@ -91,19 +79,6 @@ export class DatabaseService implements IDatabaseService, OnModuleInit, OnModule
     
     // Default: relative to this service file
     return path.join(__dirname, '../../../database/migrations');
-  }
-
-  /**
-   * Execute a query with parameters
-   */
-  async query(text: string, params?: any[]): Promise<any> {
-    const client = await this.pool.connect();
-    try {
-      const result = await client.query(text, params);
-      return result;
-    } finally {
-      client.release();
-    }
   }
 
   /**
@@ -144,6 +119,21 @@ export class DatabaseService implements IDatabaseService, OnModuleInit, OnModule
       'SELECT id, name, message, value, created_at FROM test_data WHERE is_active = true ORDER BY name'
     );
     return result.rows;
+  }
+
+  /**
+   * Get all expenses from the database
+   */
+  async getExpenses(): Promise<ExpenseDto[]> {
+    const result = await this.query(
+      'SELECT id, description, amount, date FROM expenses ORDER BY date DESC'
+    );
+    return result.rows.map((row: any) => ({
+      id: row.id,
+      description: row.description,
+      amount: parseFloat(row.amount),
+      date: row.date.toISOString().split('T')[0] // Convert to YYYY-MM-DD format
+    }));
   }
 
   /**
@@ -278,7 +268,7 @@ export class DatabaseService implements IDatabaseService, OnModuleInit, OnModule
     }
     
     const files = fs.readdirSync(migrationsDir)
-      .filter(file => file.endsWith('.sql'))
+      .filter(file => file.endsWith('.sql') && !file.endsWith('.seeds.sql'))
       .sort();
     
     console.log(`📂 Found ${files.length} migration files in: ${migrationsDir}`);
@@ -295,11 +285,76 @@ export class DatabaseService implements IDatabaseService, OnModuleInit, OnModule
     console.log(`🚀 Running migration: ${filename}`);
     
     try {
+      // Run the migration
       await this.query(sql);
-      console.log(`✅ Completed: ${filename}`);
+      console.log(`✅ Migration completed: ${filename}`);
+      
+      // Record the migration as applied
+      await this.query(
+        'INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT (migration_name) DO NOTHING',
+        [filename]
+      );
+      
+      // Check if seeds should be applied
+      const applySeeds = process.env.APPLY_SEEDS === 'true';
+      if (applySeeds) {
+        await this.runSeedsForMigration(filename);
+      }
+      
     } catch (error) {
       console.error(`❌ Failed: ${filename} - ${(error as Error).message}`);
       throw error;
     }
+  }
+
+  /**
+   * Run seed files for a specific migration
+   */
+  private async runSeedsForMigration(migrationFilename: string): Promise<void> {
+    const seedFilename = this.getSeedFilename(migrationFilename);
+    const seedFilepath = path.join(this.getMigrationsDirectory(), seedFilename);
+    
+    // Check if seed file exists
+    if (!fs.existsSync(seedFilepath)) {
+      console.log(`📝 No seed file found for ${migrationFilename} (looked for: ${seedFilename})`);
+      return;
+    }
+    
+    try {
+      console.log(`🌱 Running seeds: ${seedFilename}`);
+      const seedSql = fs.readFileSync(seedFilepath, 'utf8');
+      await this.query(seedSql);
+      console.log(`✅ Seeds completed: ${seedFilename}`);
+    } catch (error) {
+      console.error(`❌ Seed failed: ${seedFilename} - ${(error as Error).message}`);
+      // Don't throw - seeds are optional and shouldn't break migrations
+      console.warn(`⚠️  Continuing without seeds for ${migrationFilename}`);
+    }
+  }
+
+  /**
+   * Get the corresponding seed filename for a migration
+   */
+  private getSeedFilename(migrationFilename: string): string {
+    // Convert "001_create_table.sql" to "001_create_table.seeds.sql"
+    const baseName = migrationFilename.replace('.sql', '');
+    return `${baseName}.seeds.sql`;
+  }
+
+  /**
+   * Get list of available seed files
+   */
+  private getSeedFiles(): string[] {
+    const migrationsDir = this.getMigrationsDirectory();
+    
+    if (!fs.existsSync(migrationsDir)) {
+      return [];
+    }
+    
+    const files = fs.readdirSync(migrationsDir)
+      .filter(file => file.endsWith('.seeds.sql'))
+      .sort();
+    
+    return files;
   }
 } 

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { MigrationStatusDto } from '../../../../shared/migration.dto';
+import { ExpenseDto } from '../../../../shared/dto';
 import { IDatabaseService } from './database.service.interface';
 
 @Injectable()
@@ -59,6 +60,33 @@ export class MockDatabaseService implements IDatabaseService {
     status: 'up-to-date'
   };
 
+  private mockExpenses: ExpenseDto[] = [
+    {
+      id: 'e1a2b3c4-d5e6-4f7g-8h9i-j0k1l2m3n4o5',
+      description: 'Office Supplies',
+      amount: 125.50,
+      date: '2025-01-23'
+    },
+    {
+      id: 'f2b3c4d5-e6f7-4g8h-9i0j-k1l2m3n4o5p6',
+      description: 'Business Lunch',
+      amount: 67.30,
+      date: '2025-01-22'
+    },
+    {
+      id: 'g3c4d5e6-f7g8-4h9i-0j1k-l2m3n4o5p6q7',
+      description: 'Software License',
+      amount: 299.99,
+      date: '2025-01-21'
+    },
+    {
+      id: 'h4d5e6f7-g8h9-4i0j-1k2l-m3n4o5p6q7r8',
+      description: 'Travel Expenses',
+      amount: 450.75,
+      date: '2025-01-20'
+    }
+  ];
+
   /**
    * Health check method - always returns true for mock
    */
@@ -81,6 +109,14 @@ export class MockDatabaseService implements IDatabaseService {
   async getActiveTestData(): Promise<any[]> {
     console.log('🧪 Mock DatabaseService: Returning active test data');
     return this.mockData.filter(item => item.is_active);
+  }
+
+  /**
+   * Get all expenses from mock data
+   */
+  async getExpenses(): Promise<ExpenseDto[]> {
+    console.log('🧪 Mock DatabaseService: Returning mock expenses');
+    return [...this.mockExpenses];
   }
 
   /**
@@ -115,6 +151,18 @@ export class MockDatabaseService implements IDatabaseService {
         rows: this.mockMigrationInfo.appliedMigrations.map(m => ({
           migration_name: m.name,
           applied_at: new Date(m.appliedAt!)
+        }))
+      };
+    }
+    
+    if (text.includes('SELECT id, description, amount, date FROM expenses')) {
+      return {
+        rowCount: this.mockExpenses.length,
+        rows: this.mockExpenses.map(expense => ({
+          id: expense.id,
+          description: expense.description,
+          amount: expense.amount.toString(), // Simulate decimal type from DB
+          date: new Date(expense.date + 'T00:00:00.000Z') // Simulate date type from DB
         }))
       };
     }

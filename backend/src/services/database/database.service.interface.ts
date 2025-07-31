@@ -1,4 +1,5 @@
 import { MigrationStatusDto } from '../../../../shared/migration.dto';
+import { ExpenseDto } from '../../../../shared/dto';
 
 export interface IDatabaseService {
   /**
@@ -22,13 +23,12 @@ export interface IDatabaseService {
   getMigrationInfo(): Promise<MigrationStatusDto>;
 
   /**
+   * Get all expenses from the database
+   */
+  getExpenses(): Promise<ExpenseDto[]>;
+
+  /**
    * Execute a query with parameters
    */
   query(text: string, params?: any[]): Promise<any>;
-
-  /**
-   * Register a callback to be executed after migrations are complete
-   * Note: Only available in real DatabaseService, not in mock
-   */
-  registerPostMigrationCallback?(callback: () => Promise<void>): void;
 } 
