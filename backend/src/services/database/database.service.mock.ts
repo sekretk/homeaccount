@@ -62,25 +62,25 @@ export class MockDatabaseService implements IDatabaseService {
 
   private mockExpenses: ExpenseDto[] = [
     {
-      id: 'e1a2b3c4-d5e6-4f7g-8h9i-j0k1l2m3n4o5',
+      id: 'e1a2b3c4-d5e6-4f7a-8a9b-c0d1e2f3a4b5',
       description: 'Office Supplies',
       amount: 125.50,
       date: '2025-01-23'
     },
     {
-      id: 'f2b3c4d5-e6f7-4g8h-9i0j-k1l2m3n4o5p6',
+      id: 'f2b3c4d5-e6f7-4a8b-9c0d-e1f2a3b4c5d6',
       description: 'Business Lunch',
       amount: 67.30,
       date: '2025-01-22'
     },
     {
-      id: 'g3c4d5e6-f7g8-4h9i-0j1k-l2m3n4o5p6q7',
+      id: 'a3c4d5e6-f7a8-4b9c-0d1e-f2a3b4c5d6e7',
       description: 'Software License',
       amount: 299.99,
       date: '2025-01-21'
     },
     {
-      id: 'h4d5e6f7-g8h9-4i0j-1k2l-m3n4o5p6q7r8',
+      id: 'b4d5e6f7-a8b9-4c0d-1e2f-a3b4c5d6e7f8',
       description: 'Travel Expenses',
       amount: 450.75,
       date: '2025-01-20'
