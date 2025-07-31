@@ -56,6 +56,12 @@ show_help() {
     echo "  db-migrate  Run pending database migrations"
     echo "  db-status   Show migration status"
     echo ""
+    echo "Seed Commands:"
+    echo "  up-with-seeds     Start services with seeds enabled"
+    echo "  restart-with-seeds Restart backend with seeds enabled"
+    echo "  seeds-on          Set APPLY_SEEDS=true and restart backend"
+    echo "  seeds-off         Set APPLY_SEEDS=false and restart backend"
+    echo ""
     echo "  help        Show this help message"
     echo ""
 }
@@ -189,6 +195,70 @@ migration_status() {
     cd database && node migrate.js status
 }
 
+# Seed functions
+start_with_seeds() {
+    print_status "Starting all services with seeds enabled..."
+    APPLY_SEEDS=true docker compose up -d
+    print_success "All services started with seeds enabled!"
+    print_status "Backend API: http://localhost:3000/api/ (via frontend proxy)"
+    print_status "Frontend: http://localhost:3000"
+    print_warning "Seeds will be applied automatically during migrations"
+}
+
+restart_with_seeds() {
+    print_status "Restarting backend with seeds enabled..."
+    docker compose stop backend
+    APPLY_SEEDS=true docker compose up backend -d
+    print_success "Backend restarted with seeds enabled!"
+    print_warning "Seeds will be applied to any pending migrations"
+}
+
+enable_seeds() {
+    print_status "Enabling seeds and restarting backend..."
+    
+    # Update the docker-compose.yml to enable seeds
+    if command -v sed >/dev/null 2>&1; then
+        # Create backup
+        cp docker-compose.yml docker-compose.yml.bak
+        
+        # Update APPLY_SEEDS to true
+        sed -i.tmp 's/APPLY_SEEDS=false/APPLY_SEEDS=true/' docker-compose.yml
+        rm -f docker-compose.yml.tmp
+        
+        print_success "Updated APPLY_SEEDS=true in docker-compose.yml"
+    else
+        print_warning "sed not available. Please manually set APPLY_SEEDS=true in docker-compose.yml"
+    fi
+    
+    # Restart backend
+    docker compose stop backend
+    docker compose up backend -d
+    print_success "Backend restarted with seeds enabled!"
+}
+
+disable_seeds() {
+    print_status "Disabling seeds and restarting backend..."
+    
+    # Update the docker-compose.yml to disable seeds
+    if command -v sed >/dev/null 2>&1; then
+        # Create backup
+        cp docker-compose.yml docker-compose.yml.bak
+        
+        # Update APPLY_SEEDS to false
+        sed -i.tmp 's/APPLY_SEEDS=true/APPLY_SEEDS=false/' docker-compose.yml
+        rm -f docker-compose.yml.tmp
+        
+        print_success "Updated APPLY_SEEDS=false in docker-compose.yml"
+    else
+        print_warning "sed not available. Please manually set APPLY_SEEDS=false in docker-compose.yml"
+    fi
+    
+    # Restart backend
+    docker compose stop backend
+    docker compose up backend -d
+    print_success "Backend restarted with seeds disabled!"
+}
+
 # Main script logic
 case "$1" in
     "build")
@@ -244,6 +314,18 @@ case "$1" in
         ;;
     "db-status")
         migration_status
+        ;;
+    "up-with-seeds")
+        start_with_seeds
+        ;;
+    "restart-with-seeds")
+        restart_with_seeds
+        ;;
+    "seeds-on")
+        enable_seeds
+        ;;
+    "seeds-off")
+        disable_seeds
         ;;
     "help"|"--help"|"-h"|"")
         show_help

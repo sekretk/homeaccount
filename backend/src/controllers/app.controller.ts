@@ -1,12 +1,10 @@
-import { Controller, Get, Post, Inject } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { CurrentDataDto, MigrationInfoResponseDto, VersionResponseDto } from '../../../shared/dto';
 import { 
   IDatabaseService, 
   DATABASE_SERVICE_TOKEN, 
   IHealthService, 
-  HEALTH_SERVICE_TOKEN,
-  IDatabaseSeedingService,
-  DATABASE_SEEDING_SERVICE_TOKEN
+  HEALTH_SERVICE_TOKEN
 } from '../services';
 
 @Controller()
@@ -15,9 +13,7 @@ export class AppController {
     @Inject(DATABASE_SERVICE_TOKEN) 
     private readonly databaseService: IDatabaseService,
     @Inject(HEALTH_SERVICE_TOKEN)
-    private readonly healthService: IHealthService,
-    @Inject(DATABASE_SEEDING_SERVICE_TOKEN)
-    private readonly seedingService: IDatabaseSeedingService
+    private readonly healthService: IHealthService
   ) {}
 
   @Get('/current-data')
@@ -62,39 +58,6 @@ export class AppController {
     return {
       version: migrationInfo.latestMigration || 'none',
       database: migrationInfo,
-      timestamp: new Date().toISOString()
-    };
-  }
-
-  @Get('/seeds')
-  async getSeeds() {
-    const seedingInfo = await this.seedingService.getSeedingInfo();
-    
-    return {
-      version: seedingInfo.latestSeed || 'none',
-      database: seedingInfo,
-      timestamp: new Date().toISOString()
-    };
-  }
-
-  @Post('/seeds/run')
-  async runSeeds() {
-    await this.seedingService.runSeeds();
-    const seedingInfo = await this.seedingService.getSeedingInfo();
-    
-    return {
-      message: 'Seeds executed successfully',
-      seedingInfo,
-      timestamp: new Date().toISOString()
-    };
-  }
-
-  @Post('/seeds/reset')
-  async resetSeeds() {
-    await this.seedingService.resetSeeds();
-    
-    return {
-      message: 'Seeds reset successfully',
       timestamp: new Date().toISOString()
     };
   }

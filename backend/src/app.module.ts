@@ -1,21 +1,19 @@
-import { Module, OnModuleInit } from '@nestjs/common';
-import { ModuleRef } from '@nestjs/core';
+import { Module } from '@nestjs/common';
 import { AppController } from './controllers/app.controller';
+import { ExpensesController } from './controllers/expenses.controller';
 import { 
   DatabaseService, 
   MockDatabaseService, 
   DATABASE_SERVICE_TOKEN,
-  DatabaseSeedingService,
-  DATABASE_SEEDING_SERVICE_TOKEN,
   HealthService,
   MockHealthService,
   HEALTH_SERVICE_TOKEN,
   IDatabaseService,
-  IHealthService,
-  IDatabaseSeedingService} from './services';
+  IHealthService
+} from './services';
 
 @Module({
-  controllers: [AppController],
+  controllers: [AppController, ExpensesController],
   providers: [
     // Database service provider
     {
@@ -24,14 +22,6 @@ import {
         const useMockDatabase = process.env.USE_MOCK_DATABASE === 'true';
         return useMockDatabase ? new MockDatabaseService() : new DatabaseService();
       },
-    },
-    // Database seeding service provider
-    {
-      provide: DATABASE_SEEDING_SERVICE_TOKEN,
-      useFactory: (databaseService: IDatabaseService) => {
-        return new DatabaseSeedingService(databaseService);
-      },
-      inject: [DATABASE_SERVICE_TOKEN],
     },
     // Health service provider
     {
@@ -44,29 +34,4 @@ import {
     },
   ],
 })
-export class AppModule implements OnModuleInit {
-  constructor(private moduleRef: ModuleRef) {}
-
-  async onModuleInit() {
-    // Set up automatic seeding after migrations
-    const autoSeed = process.env.AUTO_SEED === 'true';
-    if (autoSeed) {
-      try {
-        const databaseService = this.moduleRef.get<IDatabaseService>(DATABASE_SERVICE_TOKEN, { strict: false });
-        const seedingService = this.moduleRef.get<IDatabaseSeedingService>(DATABASE_SEEDING_SERVICE_TOKEN, { strict: false });
-
-        // Register seeding as a post-migration callback if the method exists (real DatabaseService)
-        if (databaseService.registerPostMigrationCallback) {
-          databaseService.registerPostMigrationCallback(async () => {
-            console.log('🌱 Auto-seeding enabled, running seeds...');
-            await seedingService.runSeeds();
-          });
-        } else {
-          console.log('🧪 Mock database service detected, skipping auto-seeding setup');
-        }
-      } catch (error) {
-        console.error('❌ Failed to set up auto-seeding:', (error as Error).message);
-      }
-    }
-  }
-}
+export class AppModule {}

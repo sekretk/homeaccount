@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { CurrentDataDto, VersionResponseDto } from '../../shared/dto';
+import { CurrentDataDto, VersionResponseDto, ExpensesListResponseDto, ExpenseDto } from '../../shared/dto';
 
 // Migration Info Component
 function MigrationInfo() {
@@ -34,6 +34,137 @@ function MigrationInfo() {
       {statusEmoji} <strong>Database:</strong> {migrationInfo.database} 
       ({migrationInfo.migrations.applied}/{migrationInfo.migrations.total} migrations, {migrationInfo.migrations.status})
     </p>
+  );
+}
+
+// Expenses List Component
+function ExpensesList() {
+  const [expenses, setExpenses] = useState<ExpenseDto[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchExpenses = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get<ExpensesListResponseDto>('/api/expenses');
+      setExpenses(response.data.expenses);
+    } catch (err) {
+      setError('Failed to fetch expenses');
+      console.error('Failed to fetch expenses:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  return (
+    <div style={{ marginTop: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+        <h3>💰 Recent Expenses</h3>
+        <button 
+          onClick={fetchExpenses}
+          disabled={loading}
+          style={{
+            backgroundColor: loading ? '#ccc' : '#28a745',
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '4px',
+            fontSize: '14px',
+            cursor: loading ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {loading ? '⏳ Loading...' : '🔄 Refresh'}
+        </button>
+      </div>
+
+      {error && (
+        <div style={{ 
+          backgroundColor: '#ffebee', 
+          color: '#d32f2f', 
+          padding: '10px', 
+          borderRadius: '4px', 
+          marginBottom: '15px',
+          border: '1px solid #ffcdd2'
+        }}>
+          ❌ {error}
+        </div>
+      )}
+
+      {loading && !expenses && (
+        <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+          ⏳ Loading expenses...
+        </div>
+      )}
+
+      {expenses && expenses.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+          📝 No expenses found
+        </div>
+      )}
+
+      {expenses && expenses.length > 0 && (
+        <div style={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd', overflow: 'hidden' }}>
+          <div style={{ backgroundColor: '#f8f9fa', padding: '12px', borderBottom: '1px solid #ddd', fontWeight: 'bold' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '10px' }}>
+              <span>Description</span>
+              <span>Amount</span>
+              <span>Date</span>
+            </div>
+          </div>
+          {expenses.map((expense) => (
+            <div 
+              key={expense.id} 
+              style={{ 
+                padding: '12px', 
+                borderBottom: '1px solid #eee',
+                display: 'grid', 
+                gridTemplateColumns: '2fr 1fr 1fr', 
+                gap: '10px',
+                alignItems: 'center'
+              }}
+            >
+              <span style={{ fontWeight: '500' }}>{expense.description}</span>
+              <span style={{ color: '#dc3545', fontWeight: 'bold' }}>{formatCurrency(expense.amount)}</span>
+              <span style={{ color: '#666', fontSize: '14px' }}>{formatDate(expense.date)}</span>
+            </div>
+          ))}
+          <div style={{ 
+            padding: '12px', 
+            backgroundColor: '#f8f9fa', 
+            fontWeight: 'bold',
+            display: 'grid', 
+            gridTemplateColumns: '2fr 1fr 1fr', 
+            gap: '10px'
+          }}>
+            <span>Total ({expenses.length} expenses)</span>
+            <span style={{ color: '#dc3545' }}>
+              {formatCurrency(expenses.reduce((sum, exp) => sum + exp.amount, 0))}
+            </span>
+            <span></span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -164,6 +295,10 @@ function App() {
             <p>🔘 <strong>Interactive:</strong> Click the button above to fetch fresh data</p>
             <MigrationInfo />
           </div>
+      </div>
+
+      <div style={{ backgroundColor: '#f5f5f5', padding: '20px', borderRadius: '8px', marginTop: '20px' }}>
+        <ExpensesList />
       </div>
     </div>
   );
